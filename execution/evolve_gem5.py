@@ -155,7 +155,6 @@ def run_simulation(params: Dict, sim_id: int) -> Dict:
         f"--branch_predictor_type={params['bp_type']}",
         f"--rob_entries={params['rob_entries']}",
         f"--num_fu_intALU={params['num_fu_intALU']}",
-        f"--fetch_width={params['fetch_width']}",
         f"-c {bin_file} -o \"-i {input_file} -o image.pgm\""
     ]
 
@@ -210,13 +209,13 @@ def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "resu
                 logger.error(f"Simulación {sim_counter} falló: {e}")
                 stats = {"ipc": 0.0, "cpi": 0.0, "l1d_miss_rate": None, "l1i_miss_rate": None,
                          "branch_mispred_rate": None,
-                         "rob_entries": None, "num_fu_intALU": None, "fetch_width": None,
+                         "rob_entries": None, "num_fu_intALU": None, 
                          "simSeconds": None, "hostSeconds": None,
                           "energy": None, "edp": None}
             sim_counter += 1
 
             #fitness = (stats["ipc"] / stats["cpi"]) if stats["cpi"] not in (0, None) else 0.0
-            fitness = stats["ipc"] if stats["ipc"] not in None else 0.0
+            fitness = stats["ipc"] if stats["ipc"] is not None else 0.0
             #fitness = stats["edp"] if stats["edp"] is not None else 0.0
             combined = {**individual, **stats, "fitness": fitness} 
             results.append(combined)
@@ -224,7 +223,7 @@ def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "resu
 
         # Selección top 2
         #results.sort(key=lambda x: x["fitness"], reverse=False)  # minimizar edp
-        results.sort(key=lambda x: x["fitness"], reverse=True) #maximizar ipc
+        results.sort(key=lambda x: x["fitness"], reverse=True) # maximizar ipc
         best = results[:2]
         logger.info(f"Mejores de esta generación: {[b['fitness'] for b in best]}")
 
