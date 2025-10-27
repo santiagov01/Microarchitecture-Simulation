@@ -20,7 +20,9 @@ PARAMS_SPACE = {
     "l1d_size": ["32kB", "64kB", "128kB"],
     "l1d_assoc": [2, 4, 8],
     "l2_size": ["256kB", "512kB", "1MB"],
-    "bp_type": [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    "bp_type": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "rob_entries": [192, 256],
+    "num_fu_intALU" : [2, 4]
 }
 
 # Logging
@@ -132,6 +134,7 @@ def run_simulation(params: Dict, sim_id: int) -> Dict:
     config_file = outdir / "config.json"
 
     # workload specifics (ajusta si cambia nombre de binario)
+    #bin_file = WORKLOADS_DIR / "jpeg2k_dec" / "jpg2k_dec"
     bin_file = WORKLOADS_DIR / "jpeg2k_dec" / "jpg2k_dec"
     input_file = WORKLOADS_DIR / "jpeg2k_dec" / "jpg2kdec_testfile.j2k"
 
@@ -150,8 +153,10 @@ def run_simulation(params: Dict, sim_id: int) -> Dict:
         f"--l1d_assoc={params['l1d_assoc']}",
         f"--l2_size={params['l2_size']}",
         f"--branch_predictor_type={params['bp_type']}",
-        "-c", str(bin_file),
-        "-o", f"-i {input_file} -o image.pgm"
+        f"--rob_entries={params['rob_entries']}",
+        f"--num_fu_intALU={params['num_fu_intALU']}",
+        f"--fetch_width={params['fetch_width']}",
+        f"-c {bin_file} -o \"-i {input_file} -o image.pgm\""
     ]
 
     logger.info(f"[SIM {sim_id}] Ejecutando gem5...")
@@ -167,6 +172,9 @@ def run_simulation(params: Dict, sim_id: int) -> Dict:
     stats["cpi"] = _safe_search_float(r"system.cpu.cpi\s+([0-9.eE+-]+)", text) or 0.0
     stats["l1d_miss_rate"] = _safe_search_float(r"system.cpu.dcache.overallMissRate::total\s+([0-9.eE+-]+)", text) or 0.0
     stats["l1i_miss_rate"] = _safe_search_float(r"system.cpu.icache.overallMissRate::total\s+([0-9.eE+-]+)", text) or 0.0
+
+    stats["simSeconds"] = _safe_search_float(r"simSeconds\s+([0-9.eE+-]+)", text) or 0.0
+    stats["hostSeconds"] = _safe_search_float(r"hostSeconds\s+([0-9.eE+-]+)", text) or 0.0
 
     # branch misprediction rate: buscas numerator y denominator
     mispred = _safe_search_float(r"system.cpu.branchPred.mispredicted_0::total\s+([0-9.eE+-]+)", text, 0.0) or 0.0
@@ -201,16 +209,20 @@ def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "resu
             except Exception as e:
                 logger.error(f"Simulación {sim_counter} falló: {e}")
                 stats = {"ipc": 0.0, "cpi": 0.0, "l1d_miss_rate": None, "l1i_miss_rate": None,
-                         "branch_mispred_rate": None, "energy": None, "edp": None}
+                         "branch_mispred_rate": None,
+                         "rob_entries": None, "num_fu_intALU": None, "fetch_width": None,
+                         "simSeconds": None, "hostSeconds": None,
+                          "energy": None, "edp": None}
             sim_counter += 1
 
-            fitness = (stats["ipc"] / stats["cpi"]) if stats["cpi"] not in (0, None) else 0.0
-            combined = {**individual, **stats, "fitness": fitness}
+            #fitness = (stats["ipc"] / stats["cpi"]) if stats["cpi"] not in (0, None) else 0.0
+            fitness = stats["edp"] if stats["edp"] is not None else 0.0
+            combined = {**individual, **stats, "fitness": fitness} 
             results.append(combined)
             all_results.append(combined)
 
         # Selección top 2
-        results.sort(key=lambda x: x["fitness"], reverse=True)
+        results.sort(key=lambda x: x["fitness"], reverse=False)  # minimizar edp
         best = results[:2]
         logger.info(f"Mejores de esta generación: {[b['fitness'] for b in best]}")
 
