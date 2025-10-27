@@ -216,13 +216,15 @@ def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "resu
             sim_counter += 1
 
             #fitness = (stats["ipc"] / stats["cpi"]) if stats["cpi"] not in (0, None) else 0.0
-            fitness = stats["edp"] if stats["edp"] is not None else 0.0
+            fitness = stats["ipc"] if stats["ipc"] not in None else 0.0
+            #fitness = stats["edp"] if stats["edp"] is not None else 0.0
             combined = {**individual, **stats, "fitness": fitness} 
             results.append(combined)
             all_results.append(combined)
 
         # Selección top 2
-        results.sort(key=lambda x: x["fitness"], reverse=False)  # minimizar edp
+        #results.sort(key=lambda x: x["fitness"], reverse=False)  # minimizar edp
+        results.sort(key=lambda x: x["fitness"], reverse=True) #maximizar ipc
         best = results[:2]
         logger.info(f"Mejores de esta generación: {[b['fitness'] for b in best]}")
 
