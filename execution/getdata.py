@@ -55,14 +55,14 @@ def extract_simulation_data(path_root: str, csv_path:str) -> dict:
         
         #Instructions profiling.
 
-        stats["inst_branch"] =                  _safe_search(r"system.cpu.executeStats0.numBranches \s+([0-9.eE+-]+)", text) or 0.0
+        stats["inst_branch"] =                  _safe_search(r"system.cpu.executeStats0.numBranches\s+([0-9.eE+-]+)", text) or 0.0
 
-        stats["inst_ALU"] =                     _safe_search(r"system.cpu.commitStats0.committedInstType::IntAlu \s+([0-9.eE+-]+)", text) or 0.0
-        stats["inst_ALU"] +=                    _safe_search(r"system.cpu.commitStats0.committedInstType::IntMult \s+([0-9.eE+-]+)", text) or 0.0
+        stats["inst_ALU"] =                     _safe_search(r"system.cpu.commitStats0.committedInstType::IntAlu\s+([0-9.eE+-]+)", text) or 0.0
+        stats["inst_ALU"] +=                    _safe_search(r"system.cpu.commitStats0.committedInstType::IntMult\s+([0-9.eE+-]+)", text) or 0.0
 
-        stats["inst_load"] =                    _safe_search(r"system.cpu.commitStats0.numLoadInsts \s+([0-9.eE+-]+)", text) or 0.0
-        
-        stats["inst_store"] =                   _safe_search(r"system.cpu.commitStats0.numStoreInsts \s+([0-9.eE+-]+)", text) or 0.0
+        stats["inst_load"] =                    _safe_search(r"system.cpu.commitStats0.numLoadInsts\s+([0-9.eE+-]+)", text) or 0.0
+
+        stats["inst_store"] =                   _safe_search(r"system.cpu.commitStats0.numStoreInsts\s+([0-9.eE+-]+)", text) or 0.0
 
 
         all_stats["Stat"+str(sim_id)] = stats
