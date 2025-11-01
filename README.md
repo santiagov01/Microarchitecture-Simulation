@@ -19,19 +19,24 @@ The workflow is:
 ---
 
 ## 📂 Results Folder Structure
-`results_<DD_MM>_<metric>/
-    results/
-        <config1>/
-        <config2>/`
+```
+    results_<DD_MM>_<metric>/
+    └── results/
+        ├── <config1>/
+        └── <config2>/
+```
 Example:
-`results_28_10_ipc/
-    results/
-        config_A/
-        config_B/
-results_30_10_edp/
-    results/
-        config_C/
-        config_D/`
+```
+    results_28_10_ipc/
+    └── results/
+        ├── config_A/
+        └── config_B/
+
+    results_30_10_edp/
+    └── results/
+        ├── config_C/
+        └── config_D/
+```  
 - `<DD_MM>`: Date of simulation (day_month).
 -`<metric>`: Optimization metric (ipc or edp).
 -`results/`: Contains folders for each configuration’s outputs and metrics.
