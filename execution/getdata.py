@@ -46,12 +46,27 @@ def extract_simulation_data(path_root: str, csv_path:str) -> dict:
         stats["simTicks"] =                         _safe_search(r"simTicks \s+([0-9.eE+-]+)", text) or 0.0
         stats["l2_cache_demandMissLatency"] =       _safe_search(r"system.cpu.l2cache.demandHits::total \s+([0-9.eE+-]+)", text) or 0.0
         stats["l2_cache_demandMisses"] =            _safe_search(r"system.cpu.l2cache.overallMisses::total \s+([0-9.eE+-]+)", text) or 0.0
+        # Energy and EDP from CSV
         energy = df.loc[sim_id, "energy"]
         edp = df.loc[sim_id, "edp"]
         stats["energy"] = energy
         stats["edp"] = edp
+        stats["simSeconds"] =                        _safe_search(r"simSeconds \s+([0-9.eE+-]+)", text) or 0.0
         
+        #Instructions profiling.
+
+        stats["inst_branch"] =                  _safe_search(r"system.cpu.executeStats0.numBranches \s+([0-9.eE+-]+)", text) or 0.0
+
+        stats["inst_ALU"] =                     _safe_search(r"system.cpu.commitStats0.committedInstType::IntAlu \s+([0-9.eE+-]+)", text) or 0.0
+        stats["inst_ALU"] +=                    _safe_search(r"system.cpu.commitStats0.committedInstType::IntMult \s+([0-9.eE+-]+)", text) or 0.0
+
+        stats["inst_load"] =                    _safe_search(r"system.cpu.commitStats0.numLoadInsts \s+([0-9.eE+-]+)", text) or 0.0
+        
+        stats["inst_store"] =                   _safe_search(r"system.cpu.commitStats0.numStoreInsts \s+([0-9.eE+-]+)", text) or 0.0
+
+
         all_stats["Stat"+str(sim_id)] = stats
+
         sim_id += 1
         
 
