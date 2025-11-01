@@ -15,14 +15,20 @@ SCRIPTS_DIR = ROOT_SIMULATION / "sim_assignment" / "scripts"
 WORKLOADS_DIR = ROOT_SIMULATION / "sim_assignment" / "workloads"
 GEM5_BIN = ROOT_SIMULATION / "build" / "ARM" / "gem5.fast"
 
+RESULTS_DIR = ROOT_SIMULATION / "sim_assignment" / "results" / "results_V2"
+
+
 # Espacio de parámetros
 PARAMS_SPACE = {
+    "l1i_size" : ["32kB", "64kB", "128kB"],
+    "l1i_assoc": [4, 8, 16],
     "l1d_size": ["32kB", "64kB", "128kB"],
-    "l1d_assoc": [2, 4, 8],
-    "l2_size": ["256kB", "512kB", "1MB"],
-    "bp_type": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-    "rob_entries": [192, 256],
-    "num_fu_intALU" : [2, 4]
+    "l1d_assoc": [4, 8, 16],
+    "l2_size": ["256kB", "512kB", "1MB"],#
+    "l2_assoc": [8, 16, 32],
+    "rob_entries": [192, 256, 512],
+    "num_fu_intALU" : [2, 4],
+    "branch_predictor_type":[1,2,3,4,5,6,7,8,9]
 }
 
 # Logging
@@ -40,7 +46,7 @@ def setup_logger(name: str) -> logging.Logger:
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(),  # Log to console
-            logging.FileHandler(f"{name}.log")
+            logging.FileHandler(f"{name}_V2.log")
         ]
     )
     logger = logging.getLogger(name)
@@ -128,7 +134,7 @@ def run_simulation(params: Dict, sim_id: int) -> Dict:
     Ejecuta una simulación de gem5 con parámetros dados.
     Devuelve un dict con métricas (ipc, cpi, miss rates, energy, edp, ...)
     """
-    outdir = Path(f"output_run_{sim_id}")
+    outdir = RESULTS_DIR / f"output_run_{sim_id}"
     outdir.mkdir(exist_ok=True)
     stats_file = outdir / "stats.txt"
     config_file = outdir / "config.json"
@@ -148,13 +154,16 @@ def run_simulation(params: Dict, sim_id: int) -> Dict:
     cmd = [
         str(GEM5_BIN),
         f"--outdir={outdir}",
-        str(SCRIPTS_DIR / "CortexA76_scripts_gem5" / "CortexA76.py"),
+        str(SCRIPTS_DIR / "CortexA76_scripts_gem5" / "CortexA76.py"),        
+        f"--l1i_size={params['l1i_size']}",
+        f"--l1i_assoc={params['l1i_assoc']}",
         f"--l1d_size={params['l1d_size']}",
         f"--l1d_assoc={params['l1d_assoc']}",
         f"--l2_size={params['l2_size']}",
-        f"--branch_predictor_type={params['bp_type']}",
+        f"--l2_assoc={params['l2_assoc']}",
         f"--rob_entries={params['rob_entries']}",
         f"--num_fu_intALU={params['num_fu_intALU']}",
+        f"--branch_predictor_type={params['branch_predictor_type']}",
         f"-c {bin_file} -o \"-i {input_file} -o image.pgm\""
     ]
 
@@ -194,7 +203,7 @@ def run_simulation(params: Dict, sim_id: int) -> Dict:
 
 
 # ----------------- Genetic loop / runner -----------------
-def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "results.csv"):
+def run_genetic(generations: int = 10, pop_size: int = 15, output_csv: str = "results_V2.csv"):
     population = [{k: random.choice(v) for k, v in PARAMS_SPACE.items()} for _ in range(pop_size)]
     all_results = []
     sim_counter = 0
@@ -209,21 +218,22 @@ def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "resu
                 logger.error(f"Simulación {sim_counter} falló: {e}")
                 stats = {"ipc": 0.0, "cpi": 0.0, "l1d_miss_rate": None, "l1i_miss_rate": None,
                          "branch_mispred_rate": None,
-                         "rob_entries": None, "num_fu_intALU": None, 
+                         "rob_entries": None, "num_fu_intALU": None, "fetch_width": None,
                          "simSeconds": None, "hostSeconds": None,
                           "energy": None, "edp": None}
             sim_counter += 1
 
             #fitness = (stats["ipc"] / stats["cpi"]) if stats["cpi"] not in (0, None) else 0.0
-            fitness = stats["ipc"] if stats["ipc"] is not None else 0.0
-            #fitness = stats["edp"] if stats["edp"] is not None else 0.0
+            #fitness = stats["ipc"] if stats["ipc"] is not None else 0.0
+            fitness = stats["edp"] if stats["edp"] is not None else 0.0
             combined = {**individual, **stats, "fitness": fitness} 
             results.append(combined)
             all_results.append(combined)
+        logger.info(results)
 
         # Selección top 2
-        #results.sort(key=lambda x: x["fitness"], reverse=False)  # minimizar edp
-        results.sort(key=lambda x: x["fitness"], reverse=True) # maximizar ipc
+        results.sort(key=lambda x: x["fitness"], reverse=False)  # minimizar edp
+        #results.sort(key=lambda x: x["fitness"], reverse=True) #maximizar ipc
         best = results[:2]
         logger.info(f"Mejores de esta generación: {[b['fitness'] for b in best]}")
 
@@ -234,7 +244,7 @@ def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "resu
             child = {}
             for key in PARAMS_SPACE.keys():
                 child[key] = random.choice([parent1[key], parent2[key]])
-            if random.random() < 0.1:  # mutación 10%
+            if random.random() < 0.2:  # mutación 10%
                 p = random.choice(list(PARAMS_SPACE.keys()))
                 child[p] = random.choice(PARAMS_SPACE[p])
             new_population.append(child)
@@ -252,4 +262,5 @@ def run_genetic(generations: int = 3, pop_size: int = 5, output_csv: str = "resu
 
 if __name__ == "__main__":
     # Ejemplo de ejecución
-    run_genetic(generations=3, pop_size=5)
+    RESULTS_DIR.mkdir(exist_ok=True)
+    run_genetic(generations=5, pop_size=15)
