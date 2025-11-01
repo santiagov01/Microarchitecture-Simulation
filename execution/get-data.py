@@ -6,6 +6,7 @@ import os
 from typing import Tuple, Optional
 import os
 import json
+import pandas as pd
 
 def _safe_search(pattern: str, text: str, default: Optional[float] = None) -> Optional[float]:
     m = re.search(pattern, text)
@@ -16,10 +17,11 @@ def _safe_search(pattern: str, text: str, default: Optional[float] = None) -> Op
     except (ValueError, IndexError):
         return default
 
-def extract_simulation_data(path_root: str) -> dict:
+def extract_simulation_data(path_root: str, csv_path:str) -> dict:
     all_stats = {}
     #listar todos los directorios de acuerdo a path_root
     directories = os.listdir(path_root)
+    df = pd.read_csv(csv_path)
     sim_id = 0
     for dir_name in directories:
         stats_file = os.path.join(path_root, dir_name, "stats.txt")
@@ -27,7 +29,8 @@ def extract_simulation_data(path_root: str) -> dict:
         if not os.path.exists(stats_file):
             raise FileNotFoundError(f"Archivo stats no encontrado en {stats_file}")
 
-        text = stats_file.read_text()
+        with open(stats_file, 'r') as f:
+            text = f.read()
 
         stats = {}
         stats["branchPred_btb_mispredict"] =        _safe_search(r"system.cpu.branchPred.btb.mispredict::total\s+([0-9.eE+-]+)", text) or 0.0
@@ -43,7 +46,10 @@ def extract_simulation_data(path_root: str) -> dict:
         stats["simTicks"] =                         _safe_search(r"simTicks \s+([0-9.eE+-]+)", text) or 0.0
         stats["l2_cache_demandMissLatency"] =       _safe_search(r"system.cpu.l2cache.demandHits::total \s+([0-9.eE+-]+)", text) or 0.0
         stats["l2_cache_demandMisses"] =            _safe_search(r"system.cpu.l2cache.overallMisses::total \s+([0-9.eE+-]+)", text) or 0.0
-
+        energy = df.loc[sim_id, "energy"]
+        edp = df.loc[sim_id, "edp"]
+        stats["energy"] = energy
+        stats["edp"] = edp
         
         all_stats["Stat"+str(sim_id)] = stats
         sim_id += 1
